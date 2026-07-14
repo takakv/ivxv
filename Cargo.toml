@@ -1,9 +1,10 @@
 [package]
 name = "ivxv"
-version = "0.0.0"
+version = "0.0.1"
 edition = "2024"
 description = "Common data types and cryptographic primitives used by IVXV"
 license = "Apache-2.0"
 repository = "https://github.com/takakv/ivxv"
 
 [dependencies]
+der = { version = "0.8.1", features = ["alloc", "derive", "oid"] }
