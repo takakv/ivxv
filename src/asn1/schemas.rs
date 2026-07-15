@@ -21,7 +21,7 @@ pub struct SubjectPublicKeyInfo {
 #[derive(Clone, Debug, Eq, PartialEq, Sequence)]
 pub struct ElGamalCiphertextInfo {
     pub algorithm: AlgorithmIdentifier,
-    pub ciphertext: BitString,
+    pub ciphertext: ECCElGamalCiphertext,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Sequence)]
