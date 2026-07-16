@@ -1,3 +1,5 @@
+//! Conversions between wire formats and curve types.
+
 use der::asn1::Uint;
 use der::Decode;
 use p384::elliptic_curve::sec1::{FromSec1Point, ToSec1Point};

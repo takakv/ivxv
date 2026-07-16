@@ -1,6 +1,6 @@
 [package]
 name = "ivxv"
-version = "0.0.3"
+version = "0.0.4"
 edition = "2024"
 description = "Common data types and cryptographic primitives used by IVXV"
 license = "Apache-2.0"

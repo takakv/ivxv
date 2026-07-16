@@ -1,3 +1,5 @@
+//! Election public keys.
+
 use der::asn1::{BitString, OctetString};
 use der::{Any, Decode, Encode};
 

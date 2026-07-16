@@ -1,3 +1,5 @@
+//! Common data types and cryptographic primitives used by IVXV.
+
 pub mod asn1;
 pub mod codec;
 pub mod elgamal;

@@ -1,3 +1,5 @@
+//! An owned ASN.1 `GeneralString`, which the `der` crate does not yet provide.
+
 use der::asn1::GeneralStringRef;
 use der::{DecodeValue, EncodeValue, FixedTag, Header, Length, Reader, Result, Tag, Writer};
 

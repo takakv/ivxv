@@ -1,3 +1,9 @@
+//! Fiat–Shamir challenge derivation.
+//!
+//! Turns a proof transcript seed into a P-384 [`Scalar`] challenge by hashing a
+//! counter-prefixed SHA-256 stream and rejection-sampling the first block that
+//! forms a valid scalar.
+
 use p384::elliptic_curve::common::Output;
 use p384::elliptic_curve::PrimeField;
 use p384::{FieldBytes, Scalar};

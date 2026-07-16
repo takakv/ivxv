@@ -1,3 +1,5 @@
+//! Error type shared across parsing and decoding.
+
 use thiserror::Error;
 
 #[derive(Debug, Error)]

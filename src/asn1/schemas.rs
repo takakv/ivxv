@@ -1,3 +1,5 @@
+//! ASN.1 schema definitions for IVXV.
+
 use der::asn1::{BitString, ObjectIdentifier, OctetString, Uint};
 use der::{Any, Encode, EncodeValue, FixedTag, Length, Sequence, Tag, Writer};
 

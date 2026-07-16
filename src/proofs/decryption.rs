@@ -1,3 +1,10 @@
+//! Zero-knowledge proof of correct ElGamal decryption.
+//!
+//! Implements a non-interactive Chaum–Pedersen proof that a ciphertext `(U, V)`
+//! decrypts to a claimed plaintext `M` under the election key, made
+//! non-interactive with the strong Fiat–Shamir transform over the full
+//! transcript.
+
 use der::asn1::OctetString;
 use der::{Decode, Encode};
 use p384::elliptic_curve::rand_core::CryptoRng;

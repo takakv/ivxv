@@ -1,3 +1,5 @@
+//! Elliptic-curve ElGamal over P-384.
+
 use der::asn1::OctetString;
 use der::{Decode, Encode};
 use p384::elliptic_curve::rand_core::CryptoRng;
