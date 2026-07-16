@@ -1,7 +1,12 @@
-use der::Decode;
+use der::asn1::{BitString, OctetString};
+use der::{Any, Decode, Encode};
 
-use crate::asn1::schemas::{ECCElGamalParameters, SubjectPublicKeyInfo};
-use crate::codec::{pem_to_der, spki_to_point};
+use crate::asn1::general_string::GeneralString;
+use crate::asn1::oid::ID_IVXV_ECC_ELGAMAL;
+use crate::asn1::schemas::{
+    AlgorithmIdentifier, ECCElGamalParameters, ECCElGamalPublicKey, SubjectPublicKeyInfo,
+};
+use crate::codec::{pem_to_der, point_to_sec1, spki_to_point};
 use crate::{elgamal, ParseError};
 
 /// An election's ElGamal public key.
@@ -12,6 +17,34 @@ pub struct ElectionPublicKey {
 }
 
 impl ElectionPublicKey {
+    /// Create an election public key from an ElGamal public key.
+    pub fn new(key: elgamal::PublicKey, election_id: &str) -> Result<Self, ParseError> {
+        let params = ECCElGamalParameters {
+            curve: GeneralString::from("P-384"),
+            election_id: GeneralString::from(election_id),
+            lifted: None,
+        };
+
+        let encoded_key = ECCElGamalPublicKey {
+            pub_y: OctetString::new(point_to_sec1(key.as_point()))?,
+        }
+        .to_der()?;
+
+        let spki = SubjectPublicKeyInfo {
+            algorithm: AlgorithmIdentifier {
+                algorithm: ID_IVXV_ECC_ELGAMAL,
+                parameters: Some(Any::encode_from(&params)?),
+            },
+            subject_public_key: BitString::new(0, encoded_key)?,
+        };
+
+        Ok(Self {
+            key,
+            election_id: election_id.to_owned(),
+            spki,
+        })
+    }
+
     /// Parse a DER-encoded election public key.
     pub fn from_der(der: &[u8]) -> Result<Self, ParseError> {
         let spki = SubjectPublicKeyInfo::from_der(der)?;

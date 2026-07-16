@@ -197,3 +197,101 @@ impl<'a> DecryptionContext<'a> {
         .to_der()?)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use p384::elliptic_curve::rand_core::SeedableRng;
+    use rand_chacha::ChaCha20Rng;
+
+    struct Fixture {
+        sk: SecretKey,
+        election_pk: ElectionPublicKey,
+        info: ElGamalCiphertextInfo,
+        plaintext: Plaintext,
+        rng: ChaCha20Rng,
+    }
+
+    fn fixture() -> Fixture {
+        let mut rng = ChaCha20Rng::seed_from_u64(0x1234);
+
+        let sk = SecretKey::generate(&mut rng);
+        let pk = sk.public_key();
+
+        let message = Plaintext::lift(&Scalar::random(&mut rng));
+        let (ciphertext, _) = pk.encrypt(&message, &mut rng);
+
+        let decrypted = sk.decrypt(&ciphertext);
+        assert_eq!(decrypted.as_point(), message.as_point());
+
+        let election_pk = ElectionPublicKey::new(pk, "test").unwrap();
+
+        Fixture {
+            sk,
+            election_pk,
+            info: ciphertext.to_info().unwrap(),
+            plaintext: message,
+            rng,
+        }
+    }
+
+    #[test]
+    fn honest_proof_verifies() {
+        let mut f = fixture();
+        let ctx = DecryptionContext::new(&f.election_pk);
+
+        let proof = ctx.prove(&f.sk, &f.info, &f.plaintext, &mut f.rng).unwrap();
+
+        ctx.verify(&f.info, &f.plaintext, &proof).unwrap();
+    }
+
+    #[test]
+    fn tampered_response_fails_message_check() {
+        let mut f = fixture();
+        let ctx = DecryptionContext::new(&f.election_pk);
+
+        let mut proof = ctx.prove(&f.sk, &f.info, &f.plaintext, &mut f.rng).unwrap();
+
+        proof.response += Scalar::ONE;
+
+        let err = ctx.verify(&f.info, &f.plaintext, &proof).unwrap_err();
+        assert!(matches!(
+            err,
+            DecryptionVerifyError::Invalid(DecryptionError::MsgCommitment)
+        ));
+    }
+
+    #[test]
+    fn tampered_key_commitment_fails_key_check() {
+        let mut f = fixture();
+        let ctx = DecryptionContext::new(&f.election_pk);
+
+        let mut proof = ctx.prove(&f.sk, &f.info, &f.plaintext, &mut f.rng).unwrap();
+
+        proof.key_commitment += ProjectivePoint::GENERATOR;
+
+        let err = ctx.verify(&f.info, &f.plaintext, &proof).unwrap_err();
+        assert!(matches!(
+            err,
+            DecryptionVerifyError::Invalid(DecryptionError::KeyCommitment)
+        ));
+    }
+
+    #[test]
+    fn wrong_plaintext_fails_message_check() {
+        let mut f = fixture();
+        let ctx = DecryptionContext::new(&f.election_pk);
+
+        let proof = ctx.prove(&f.sk, &f.info, &f.plaintext, &mut f.rng).unwrap();
+
+        let other = Plaintext::lift(&Scalar::random(&mut f.rng));
+        assert_ne!(other.as_point(), f.plaintext.as_point());
+
+        let err = ctx.verify(&f.info, &other, &proof).unwrap_err();
+        assert!(matches!(
+            err,
+            DecryptionVerifyError::Invalid(DecryptionError::MsgCommitment)
+        ));
+    }
+}
