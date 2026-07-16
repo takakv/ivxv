@@ -80,6 +80,11 @@ impl SecretKey {
     pub fn decrypt(&self, ct: &Ciphertext) -> Plaintext {
         Plaintext(ct.v - ct.u * *self.0)
     }
+
+    /// The exponent itself.
+    pub(crate) const fn as_scalar(&self) -> &NonZeroScalar {
+        &self.0
+    }
 }
 
 impl Plaintext {

@@ -1,13 +1,15 @@
 use der::asn1::OctetString;
 use der::{Decode, Encode};
+use p384::elliptic_curve::rand_core::CryptoRng;
+use p384::elliptic_curve::Field;
 use p384::{ProjectivePoint, Scalar};
 use thiserror::Error;
 
 use crate::asn1::general_string::GeneralString;
 use crate::asn1::schemas::{self, ECCElGamalDecryptionChallenge, ElGamalCiphertextInfo};
-use crate::codec::{point_from_sec1, scalar_from_uint};
+use crate::codec::{point_from_sec1, point_to_sec1, scalar_from_uint, scalar_to_uint};
 use crate::election::ElectionPublicKey;
-use crate::elgamal::{Ciphertext, Plaintext};
+use crate::elgamal::{Ciphertext, Plaintext, SecretKey};
 use crate::proofs::fiatshamir;
 use crate::ParseError;
 
@@ -81,6 +83,41 @@ impl<'a> DecryptionContext<'a> {
         Self { pk }
     }
 
+    /// Prove that `ciphertext` decrypts to `plaintext` under `sk`.
+    pub fn prove(
+        &self,
+        sk: &SecretKey,
+        ciphertext: &ElGamalCiphertextInfo,
+        plaintext: &Plaintext,
+        rng: &mut impl CryptoRng,
+    ) -> Result<DecryptionProof, ParseError> {
+        let ct = Ciphertext::from_info(ciphertext)?;
+
+        let t = Scalar::random(rng);
+        let a = ct.u * t;
+        let b = ProjectivePoint::GENERATOR * t;
+
+        let a_octets = OctetString::new(point_to_sec1(&a))?;
+        let b_octets = OctetString::new(point_to_sec1(&b))?;
+        let m_octets = OctetString::new(plaintext.to_sec1())?;
+
+        let challenge =
+            fiatshamir::challenge(&self.derive_seed(ciphertext, &m_octets, &a_octets, &b_octets)?);
+
+        let s = challenge * *sk.as_scalar().as_ref() + t;
+
+        Ok(DecryptionProof {
+            wire: schemas::ECCElGamalDecryptionProof {
+                a_msg_commitment: a_octets,
+                b_key_commitment: b_octets,
+                s_response: scalar_to_uint(&s)?,
+            },
+            msg_commitment: a,
+            key_commitment: b,
+            response: s,
+        })
+    }
+
     /// Verify the ZKP of correct decryption.
     pub fn verify(
         &self,
@@ -119,6 +156,24 @@ impl<'a> DecryptionContext<'a> {
         }
 
         Ok(())
+    }
+
+    /// Decode a ciphertext, message and proof,
+    /// then verify the ZKP of correct decryption.
+    pub fn verify_der(
+        &self,
+        ciphertext_der: &[u8],
+        message_der: &[u8],
+        proof_der: &[u8],
+    ) -> Result<(), DecryptionVerifyError> {
+        let ciphertext =
+            ElGamalCiphertextInfo::from_der(ciphertext_der).map_err(ParseError::from)?;
+        let plaintext = Plaintext::from_der(message_der)?;
+        self.verify(
+            &ciphertext,
+            &plaintext,
+            &DecryptionProof::from_der(proof_der)?,
+        )
     }
 
     /// Build the strong Fiat–Shamir seed.

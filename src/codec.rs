@@ -40,6 +40,11 @@ pub fn scalar_from_uint(uint: &Uint) -> Result<Scalar, ParseError> {
     scalar_from_uint_bytes(uint.as_bytes())
 }
 
+/// Convert a scalar to an ASN.1 unsigned integer.
+pub fn scalar_to_uint(scalar: &Scalar) -> Result<Uint, ParseError> {
+    Ok(Uint::new(&scalar.to_bytes())?)
+}
+
 /// Extract the group element from a `SubjectPublicKeyInfo`.
 pub fn spki_to_point(spki: &SubjectPublicKeyInfo) -> Result<ProjectivePoint, ParseError> {
     let inner = spki
